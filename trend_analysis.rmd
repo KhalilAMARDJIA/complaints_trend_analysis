@@ -1,0 +1,74 @@
+---
+title: "Complaints trend analysis"
+author: "Khalil AMARDJIA"
+date: "`r Sys.Date()`"
+output:
+  html_document
+---
+
+  
+```{r setup}
+knitr::opts_chunk$set(echo = TRUE)
+setwd('I:\\R\\Complaints trend analysis')
+```
+
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(binom)
+library(ggplot2)
+
+data = read.csv('complaints_analysis.csv', sep = ";")
+
+data = data %>%
+    mutate(Cumulative_sales = cumsum(Sales),
+           Cumulative_imp_complaints = cumsum(Complaints_imp),
+           Cumulative_inst_complaints = cumsum(Complaints_inst))
+
+data_imp = data %>% select(Year, Cumulative_sales, Cumulative_imp_complaints)
+data_inst = data %>% select(Year, Cumulative_sales, Cumulative_inst_complaints)
+
+data_imp$Complaints_occurrence = data_imp$Cumulative_imp_complaints / data_imp$Cumulative_sales
+data_inst$Complaints_occurrence = data_inst$Cumulative_inst_complaints / data_inst$Cumulative_sales
+
+
+data_imp$CI_low = binom.confint(x = data$Cumulative_imp_complaints, n = data$Cumulative_sales, methods = "wilson")$low
+data_imp$CI_up = binom.confint(x = data$Cumulative_imp_complaints, n = data$Cumulative_sales, methods = "wilson")$upper
+
+write.csv2(data_imp, "implant analysis.csv")
+
+data_inst$CI_low = binom.confint(x = data$Cumulative_inst_complaints, n = data$Cumulative_sales, methods = "wilson")$low
+data_inst$CI_up = binom.confint(x = data$Cumulative_inst_complaints, n = data$Cumulative_sales, methods = "wilson")$upper
+
+write.csv2(data_inst, "instrument analysis.csv")
+```
+
+# Implant complaints analysis
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+prop.trend.test(x = data$Cumulative_imp_complaints, data$Cumulative_sales)
+
+ggplot(data = data_imp, aes(x = Year, y = Complaints_occurrence))+
+  geom_point()+
+  geom_errorbar(aes(ymin = CI_low, ymax = CI_up, width = 0.2), color = "royalblue")+
+  ggtitle("Implant complaints occurence")+
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  ylim(0, 0.05)+
+  theme_bw()
+
+pairwise.prop.test(x = data$Cumulative_imp_complaints, n = data$Cumulative_sales) 
+```
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+prop.trend.test(x = data$Cumulative_inst_complaints, data$Cumulative_sales)
+
+ggplot(data = data_inst, aes(x = Year, y = Complaints_occurrence))+
+  geom_point()+
+  geom_errorbar(aes(ymin = CI_low, ymax = CI_up, width = 0.2), color = "royalblue")+
+  ggtitle("Intruments complaints occurence")+
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  ylim(0, 0.05)+
+  theme_bw()
+
+pairwise.prop.test(x = data$Cumulative_inst_complaints, n = data$Cumulative_sales) 
+```
